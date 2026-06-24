@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamified Fitness Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .workout-card {
+            border-radius: 15px;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .workout-card:hover {
+            transform: translateY(-5px);
+        }
+        .streak-badge {
+            font-size: 2rem;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .level-progress {
+            height: 25px;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <!-- Header with gamification stats -->
+        <div class="row mb-4">
+            <div class="col-12 text-center text-white">
+                <h1 class="display-4">💪 Gamified Fitness Tracker</h1>
+                <p class="lead">Turn your workouts into a game!</p>
+            </div>
+        </div>
+
+        <!-- Player Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <div class="card bg-dark text-white workout-card">
+                    <div class="card-body text-center">
+                        <div class="row">
+                            <div class="col-4">
+                                <h5>Level</h5>
+                                <h2 id="level">1</h2>
+                            </div>
+                            <div class="col-4">
+                                <h5>XP</h5>
+                                <h2 id="xp">0</h2>
+                            </div>
+                            <div class="col-4">
+                                <h5>🔥 Streak</h5>
+                                <h2 id="streak">0</h2>
+                            </div>
+                        </div>
+                        <div class="progress level-progress mt-3">
+                            <div id="xpProgress" class="progress-bar bg-success" style="width: 0%"></div>
+                        </div>
+                        <small>Next level: <span id="nextLevelXp">100</span> XP</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Cards -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Push-ups', 10)">
+                    <div class="card-body text-center">
+                        <h3>💪 Push-ups</h3>
+                        <p>10 reps = 10 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Squats', 15)">
+                    <div class="card-body text-center">
+                        <h3>🏋️ Squats</h3>
+                        <p>15 reps = 15 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Jumping Jacks', 20)">
+                    <div class="card-body text-center">
+                        <h3>🤸 Jumping Jacks</h3>
+                        <p>20 reps = 20 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-dark text-white">
+                    <div class="card-header">
+                        <h4>📋 Recent Activity</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul id="activityLog" class="list-unstyled">
+                            <li class="text-muted">Complete a workout to see activity!</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let playerData = {
+            level: 1,
+            xp: 0,
+            streak: 0,
+            lastWorkoutDate: null
+        };
+
+        // Load saved data
+        function loadGame() {
+            const saved = localStorage.getItem('fitnessGame');
+            if (saved) {
+                playerData = JSON.parse(saved);
+                updateUI();
+            }
+        }
+
+        // Save game data
+        function saveGame() {
+            localStorage.setItem('fitnessGame', JSON.stringify(playerData));
+        }
+
+        // Update streak based on daily consistency
+        function updateStreak() {
+            const today = new Date().toDateString();
+            const lastWorkout = playerData.lastWorkoutDate;
+            
+            if (lastWorkout === today) {
+                return; // Already worked out today
+            }
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (lastWorkout === yesterday.toDateString()) {
+                playerData.streak++;
+            } else {
+                playerData.streak = 1;
+            }
+            
+            playerData.lastWorkoutDate = today;
+        }
+
+        // Add XP and handle leveling up
+        function addXP(amount) {
+            // Streak bonus (up to 50% bonus)
+            const streakBonus = Math.min(playerData.streak * 0.05, 0.5);
+            const bonusXP = Math.floor(amount * streakBonus);
+            const totalXP = amount + bonusXP;
+            
+            playerData.xp += totalXP;
+            
+            // Level up logic
+            const xpNeeded = playerData.level * 100;
+            if (playerData.xp >= xpNeeded) {
+                playerData.level++;
+                playerData.xp -= xpNeeded;
+                showNotification(`🎉 LEVEL UP! You're now level ${playerData.level}! 🎉`);
+            }
+            
+            saveGame();
+            updateUI();
+            return totalXP;
+        }
+
+        // Complete a workout
+        function completeWorkout(workoutName, reps) {
+            // Add XP based on reps
+            const xpGained = reps;
+            updateStreak();
+            const totalXP = addXP(xpGained);
+            
+            // Add to activity log
+            addActivityLog(`${workoutName}: +${totalXP} XP (${playerData.streak} day streak! 🔥)`);
+            
+            // Visual feedback
+            showNotification(`+${totalXP} XP! 🔥 ${playerData.streak} day streak!`);
+        }
+
+        // Update UI elements
+        function updateUI() {
+            document.getElementById('level').textContent = playerData.level;
+            document.getElementById('xp').textContent = playerData.xp;
+            document.getElementById('streak').textContent = playerData.streak;
+            
+            const nextLevelXp = playerData.level * 100;
+            const progress = (playerData.xp / nextLevelXp) * 100;
+            document.getElementById('xpProgress').style.width = `${progress}%`;
+            document.getElementById('nextLevelXp').textContent = nextLevelXp;
+        }
+
+        // Add activity log entry
+        function addActivityLog(message) {
+            const log = document.getElementById('activityLog');
+            const li = document.createElement('li');
+            li.className = 'mb-2';
+            li.innerHTML = `<span class="badge bg-success me-2">✓</span> ${message}`;
+            log.insertBefore(li, log.firstChild);
+            
+            // Keep only last 10 entries
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Show notification
+        function showNotification(message) {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success animate__animated animate__fadeInUp';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // Initialize game
+        loadGame();
+        
+        // Add console.log for testing (pipeline will warn about this)
+        console.log("Game initialized! Ready to workout!");
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamified Fitness Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .workout-card {
+            border-radius: 15px;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .workout-card:hover {
+            transform: translateY(-5px);
+        }
+        .streak-badge {
+            font-size: 2rem;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .level-progress {
+            height: 25px;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <!-- Header with gamification stats -->
+        <div class="row mb-4">
+            <div class="col-12 text-center text-white">
+                <h1 class="display-4">💪 Gamified Fitness Tracker</h1>
+                <p class="lead">Turn your workouts into a game!</p>
+            </div>
+        </div>
+
+        <!-- Player Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <div class="card bg-dark text-white workout-card">
+                    <div class="card-body text-center">
+                        <div class="row">
+                            <div class="col-4">
+                                <h5>Level</h5>
+                                <h2 id="level">1</h2>
+                            </div>
+                            <div class="col-4">
+                                <h5>XP</h5>
+                                <h2 id="xp">0</h2>
+                            </div>
+                            <div class="col-4">
+                                <h5>🔥 Streak</h5>
+                                <h2 id="streak">0</h2>
+                            </div>
+                        </div>
+                        <div class="progress level-progress mt-3">
+                            <div id="xpProgress" class="progress-bar bg-success" style="width: 0%"></div>
+                        </div>
+                        <small>Next level: <span id="nextLevelXp">100</span> XP</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Cards -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Push-ups', 10)">
+                    <div class="card-body text-center">
+                        <h3>💪 Push-ups</h3>
+                        <p>10 reps = 10 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Squats', 15)">
+                    <div class="card-body text-center">
+                        <h3>🏋️ Squats</h3>
+                        <p>15 reps = 15 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card workout-card" onclick="completeWorkout('Jumping Jacks', 20)">
+                    <div class="card-body text-center">
+                        <h3>🤸 Jumping Jacks</h3>
+                        <p>20 reps = 20 XP</p>
+                        <button class="btn btn-primary">Do Workout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-dark text-white">
+                    <div class="card-header">
+                        <h4>📋 Recent Activity</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul id="activityLog" class="list-unstyled">
+                            <li class="text-muted">Complete a workout to see activity!</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let playerData = {
+            level: 1,
+            xp: 0,
+            streak: 0,
+            lastWorkoutDate: null
+        };
+
+        // Load saved data
+        function loadGame() {
+            const saved = localStorage.getItem('fitnessGame');
+            if (saved) {
+                playerData = JSON.parse(saved);
+                updateUI();
+            }
+        }
+
+        // Save game data
+        function saveGame() {
+            localStorage.setItem('fitnessGame', JSON.stringify(playerData));
+        }
+
+        // Update streak based on daily consistency
+        function updateStreak() {
+            const today = new Date().toDateString();
+            const lastWorkout = playerData.lastWorkoutDate;
+            
+            if (lastWorkout === today) {
+                return; // Already worked out today
+            }
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (lastWorkout === yesterday.toDateString()) {
+                playerData.streak++;
+            } else {
+                playerData.streak = 1;
+            }
+            
+            playerData.lastWorkoutDate = today;
+        }
+
+        // Add XP and handle leveling up
+        function addXP(amount) {
+            // Streak bonus (up to 50% bonus)
+            const streakBonus = Math.min(playerData.streak * 0.05, 0.5);
+            const bonusXP = Math.floor(amount * streakBonus);
+            const totalXP = amount + bonusXP;
+            
+            playerData.xp += totalXP;
+            
+            // Level up logic
+            const xpNeeded = playerData.level * 100;
+            if (playerData.xp >= xpNeeded) {
+                playerData.level++;
+                playerData.xp -= xpNeeded;
+                showNotification(`🎉 LEVEL UP! You're now level ${playerData.level}! 🎉`);
+            }
+            
+            saveGame();
+            updateUI();
+            return totalXP;
+        }
+
+        // Complete a workout
+        function completeWorkout(workoutName, reps) {
+            // Add XP based on reps
+            const xpGained = reps;
+            updateStreak();
+            const totalXP = addXP(xpGained);
+            
+            // Add to activity log
+            addActivityLog(`${workoutName}: +${totalXP} XP (${playerData.streak} day streak! 🔥)`);
+            
+            // Visual feedback
+            showNotification(`+${totalXP} XP! 🔥 ${playerData.streak} day streak!`);
+        }
+
+        // Update UI elements
+        function updateUI() {
+            document.getElementById('level').textContent = playerData.level;
+            document.getElementById('xp').textContent = playerData.xp;
+            document.getElementById('streak').textContent = playerData.streak;
+            
+            const nextLevelXp = playerData.level * 100;
+            const progress = (playerData.xp / nextLevelXp) * 100;
+            document.getElementById('xpProgress').style.width = `${progress}%`;
+            document.getElementById('nextLevelXp').textContent = nextLevelXp;
+        }
+
+        // Add activity log entry
+        function addActivityLog(message) {
+            const log = document.getElementById('activityLog');
+            const li = document.createElement('li');
+            li.className = 'mb-2';
+            li.innerHTML = `<span class="badge bg-success me-2">✓</span> ${message}`;
+            log.insertBefore(li, log.firstChild);
+            
+            // Keep only last 10 entries
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Show notification
+        function showNotification(message) {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success animate__animated animate__fadeInUp';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // Initialize game
+        loadGame();
+        
+        // Add console.log for testing (pipeline will warn about this)
+        console.log("Game initialized! Ready to workout!");
+    </script>
+</body>
+</html>

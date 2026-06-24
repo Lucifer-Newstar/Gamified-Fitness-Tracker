@@ -1,0 +1,70 @@
+name: Deploy Gamified Workout MVP
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Stage 1: Quick sanity checks (no build step needed)
+  sanity-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check HTML validity
+        run: |
+          sudo apt-get install -y tidy
+          tidy -e index.html || true   # doesn't fail, just warns
+      
+      - name: Lint JavaScript
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          npm install -g eslint
+          eslint js/**/*.js --no-eslintrc --env browser --env es6 || echo "Fix lint errors"
+      
+      - name: Check for console.logs (optional)
+        run: |
+          if grep -r "console\.log" js/; then
+            echo "⚠️ Found console.log statements — remove before merge"
+          fi
+
+  # Stage 2: Preview deploy (for PRs)
+  preview-deploy:
+    needs: sanity-check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Netlify preview
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: '.'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview: PR #${{ github.event.pull_request.number }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+  # Stage 3: Production deploy (push to main)
+  production-deploy:
+    needs: sanity-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: '.'
+          production-branch: main
+          production-deploy: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
