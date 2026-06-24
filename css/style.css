@@ -1,0 +1,51 @@
+body{
+    background-color:#f4f6f9;
+    font-family:Arial,sans-serif;
+    text-align:center;
+    margin:0;
+    padding:0;
+}
+
+.container{
+    margin-top:50px;
+}
+
+.card{
+    max-width:700px;
+    margin:auto;
+    padding:30px;
+    border-radius:15px;
+    box-shadow:0px 4px 12px rgba(0,0,0,0.2);
+    background:white;
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+h3{
+    margin:10px 0;
+}
+
+input{
+    width:250px;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:5px;
+}
+
+button{
+    padding:10px 20px;
+    font-size:16px;
+    cursor:pointer;
+    margin:5px;
+}
+
+.progress{
+    height:25px;
+    border-radius:10px;
+}
+
+.progress-bar{
+    font-weight:bold;
+}

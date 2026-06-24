@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+
+    <h1 id="title">🏋️ Welcome to FitQuest</h1>
+
+    <h3 id="level">Level: 1</h3>
+    <h3 id="xp">XP: 0</h3>
+
+    <div class="progress mx-auto" style="width:300px;">
+        <div id="xpBar"
+            class="progress-bar progress-bar-striped progress-bar-animated"
+            role="progressbar"
+            style="width:0%">
+            0/50 XP
+        </div>
+    </div>
+
+    <br>
+
+    <h3 id="bmi">BMI: -</h3>
+    <h3 id="status">Status: -</h3>
+    <h3 id="badge">Badge: 🔰 Beginner</h3>
+    <h3 id="workoutPlan">Workout Plan: -</h3>
+
+    <br>
+
+    <button class="btn btn-primary" onclick="showBMI()">
+        BMI Calculator
+    </button>
+
+    <button class="btn btn-success" onclick="doWorkout()">
+        Complete Workout (+10 XP)
+    </button>
+
+    <br><br>
+
+    <button class="btn btn-danger" onclick="logout()">
+        Logout
+    </button>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/auth.js"></script>
+
+<script>
+
+window.onload = function () {
+    loadDashboard();
+};
+
+async function loadDashboard() {
+
+    let email = localStorage.getItem("userEmail");
+
+    if (!email) {
+        alert("Please Login Again");
+        window.location.href = "login.html";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("email", email)
+        .order("id", { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error || !data) {
+        console.log(error);
+        alert("Error loading profile");
+        return;
+    }
+
+    let xp = data.xp || 0;
+
+    document.getElementById("title").innerText =
+        "🏋️ Welcome " + data.name;
+
+    document.getElementById("xp").innerText =
+        "XP: " + xp;
+
+    document.getElementById("level").innerText =
+        "Level: " + (data.level || 1);
+
+    document.getElementById("bmi").innerText =
+        "BMI: " + data.bmi;
+
+    // Progress Bar
+    let progressXP = xp % 50;
+    let progressPercent = (progressXP / 50) * 100;
+
+    document.getElementById("xpBar").style.width =
+        progressPercent + "%";
+
+    document.getElementById("xpBar").innerText =
+        progressXP + "/50 XP";
+
+    // BMI Status
+    let bmiValue = parseFloat(data.bmi);
+
+    let status = "";
+
+    if (bmiValue < 18.5)
+        status = "Underweight 🟡";
+    else if (bmiValue < 25)
+        status = "Fit 🟢";
+    else
+        status = "Overweight 🔴";
+
+    document.getElementById("status").innerText =
+        "Status: " + status;
+
+    // Badge System
+    let badge = "🔰 Beginner";
+
+    if (xp >= 200)
+        badge = "🥇 Gold";
+    else if (xp >= 100)
+        badge = "🥈 Silver";
+    else if (xp >= 50)
+        badge = "🥉 Bronze";
+
+    document.getElementById("badge").innerText =
+        "Badge: " + badge;
+
+    // Workout Recommendation
+    let workout = "";
+
+    if (bmiValue < 18.5)
+        workout = "Weight Gain: Pushups, Squats, Protein Diet";
+    else if (bmiValue < 25)
+        workout = "Maintain Fitness: Running, Plank, Stretching";
+    else
+        workout = "Weight Loss: Walking, Cycling, Jumping Jacks";
+
+    document.getElementById("workoutPlan").innerText =
+        "Workout Plan: " + workout;
+}
+
+async function doWorkout() {
+
+    let email = localStorage.getItem("userEmail");
+
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("email", email)
+        .order("id", { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error || !data) {
+        console.log(error);
+        return;
+    }
+
+    let xp = data.xp || 0;
+
+    xp += 10;
+
+    let level = Math.floor(xp / 50) + 1;
+
+    const { error: updateError } = await supabaseClient
+        .from("profiles")
+        .update({
+            xp: xp,
+            level: level
+        })
+        .eq("email", email);
+
+    if (updateError) {
+        console.log(updateError);
+        alert("Error updating XP");
+        return;
+    }
+
+    document.getElementById("xp").innerText =
+        "XP: " + xp;
+
+    document.getElementById("level").innerText =
+        "Level: " + level;
+
+    let progressXP = xp % 50;
+    let progressPercent = (progressXP / 50) * 100;
+
+    document.getElementById("xpBar").style.width =
+        progressPercent + "%";
+
+    document.getElementById("xpBar").innerText =
+        progressXP + "/50 XP";
+
+    let badge = "🔰 Beginner";
+
+    if (xp >= 200)
+        badge = "🥇 Gold";
+    else if (xp >= 100)
+        badge = "🥈 Silver";
+    else if (xp >= 50)
+        badge = "🥉 Bronze";
+
+    document.getElementById("badge").innerText =
+        "Badge: " + badge;
+
+    alert("Workout Completed! +10 XP 💪");
+}
+
+function showBMI() {
+    alert(document.getElementById("bmi").innerText);
+}
+
+function logout() {
+    localStorage.removeItem("userEmail");
+    alert("Logged Out Successfully");
+    window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>
